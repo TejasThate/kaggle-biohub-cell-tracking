@@ -14,3 +14,4 @@ The project explores two primary approaches to cell tracking in 3D time-lapse mi
 - Gaussian Heatmap Regression: Instead of standard binary segmentation, predicting a Gaussian heatmap around each cell center is far more effective for dense point detection tasks.
 - 3D U-Net: Medical imaging libraries like MONAI provide robust 3D network architectures and utilities that handle volumetric data elegantly.
 - Resource Constraints: Due to Kaggle's execution time limits, training and inference must be split across multiple notebooks using dataset artifacts to pass model weights.
+-----------------------------------+----------------------
