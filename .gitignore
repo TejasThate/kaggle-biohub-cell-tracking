@@ -1,0 +1,23 @@
+# Python & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# Kaggle Submissions & Artifacts
+submission.csv
+*.log
+scratch/
+scratch_test_dir/
+*.zarr/
+*.geff/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
