@@ -743,33 +743,61 @@ def process_dataset_worker(args: Tuple[str, str]) -> Tuple[str, Dict[int, Dict],
 # 5. MAIN EXECUTION & SUBMISSION CSV GENERATION
 # ============================================================
 
+def parse_args():
+    import argparse
+    parser = argparse.ArgumentParser(description="CZ Biohub Cell Tracking: Ultra-Fast Submission Pipeline")
+    parser.add_argument(
+        '--test-dir',
+        type=str,
+        default=None,
+        help="Path to directory containing .zarr test datasets (auto-detected if not specified)."
+    )
+    parser.add_argument(
+        '--output',
+        type=str,
+        default='submission.csv',
+        help="Output CSV filepath (default: 'submission.csv')."
+    )
+    parser.add_argument(
+        '--workers',
+        type=int,
+        default=MAX_WORKERS,
+        help=f"Number of parallel CPU worker processes (default: {MAX_WORKERS})."
+    )
+    return parser.parse_known_args()[0]
+
+
 def main():
+    args = parse_args()
+    num_workers = min(args.workers, os.cpu_count() or 4)
+    
     print("=" * 80)
     print("CZ Biohub Cell Tracking: Ultra-Fast Submission Generator")
-    print(f"CPU Workers: {MAX_WORKERS} | Voxel Scale: {SCALE} | XY Downsample: {XY_DOWNSAMPLE}x")
+    print(f"CPU Workers: {num_workers} | Voxel Scale: {SCALE} | XY Downsample: {XY_DOWNSAMPLE}x")
     print("=" * 80)
     
     start_time = time.time()
-    test_dir = resolve_test_dir()
+    test_dir = args.test_dir or resolve_test_dir()
+    output_csv = args.output
     
     all_rows = []
     
-    if test_dir is None:
+    if test_dir is None or not os.path.exists(test_dir):
         print("Warning: No valid test directory located. Writing empty submission template.")
         folder_names = []
     else:
-        print(f"Found test directory: {test_dir}")
+        print(f"Found test directory: {os.path.abspath(test_dir)}")
         folder_names = sorted(
             d.replace('.zarr', '') for d in os.listdir(test_dir) if d.endswith('.zarr')
         )
         print(f"Discovered {len(folder_names)} dataset(s) to process.")
         
-    tasks = [(os.path.join(test_dir, fn + '.zarr'), fn) for fn in folder_names]
+    tasks = [(os.path.join(test_dir, fn + '.zarr'), fn) for fn in folder_names] if test_dir else []
     
     # Process datasets with ProcessPoolExecutor (multiprocessing across datasets)
     if tasks:
         completed = 0
-        with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
             future_to_fn = {executor.submit(process_dataset_worker, task): task[1] for task in tasks}
             
             for future in concurrent.futures.as_completed(future_to_fn):
@@ -830,9 +858,10 @@ def main():
     sub.index = range(len(sub))
     sub.index.name = 'id'
     
-    output_csv = 'submission.csv'
     sub.to_csv(output_csv)
-    print(f"Successfully wrote: {output_csv} ({len(sub)} rows)")
+    abs_output = os.path.abspath(output_csv)
+    print(f"\nSuccessfully wrote: {abs_output}")
+    print(f"Total Rows: {len(sub)}")
     
     # Final Validation Summary
     if len(sub) > 0:
@@ -844,3 +873,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
